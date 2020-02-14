@@ -46,8 +46,8 @@ def Database():
     cursor = conn.cursor()
     cursor.execute("CREATE TABLE IF NOT EXISTS `users` (mem_id INTEGER NOT NULL PRIMARY KEY  AUTOINCREMENT, username TEXT, password TEXT)")
     cursor.execute("CREATE TABLE IF NOT EXISTS `groups` (group_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, group_name TEXT)")
-    cursor.execute("CREATE TABLE IF NOT EXISTS `sent_messages` (message_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,contact INTEGER, message TEXT,  status VARCHAR(50) NOT NULL)")
-    cursor.execute("CREATE TABLE IF NOT EXISTS `received_messages` (message_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,contact INTEGER, message TEXT,  status VARCHAR(50) NOT NULL)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS `sent_messages` (message_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,contact INTEGER, message VARCHAR(250) NOT NULL,  status VARCHAR(50) NOT NULL)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS `received_messages` (message_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,contact INTEGER, message VARCHAR(250) NOT NULL,  status VARCHAR(50) NOT NULL)")
     cursor.execute("CREATE TABLE IF NOT EXISTS 'profiles' (profile_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,  profile_name VARCHAR(50) NOT NULL, received_from VARCHAR(50) NOT NULL, amount INTEGER NOT NULL, profile_group VARCHAR(50) NOT NULL, profile_message VARCHAR(50) NOT NULL)")
     cursor.execute("CREATE TABLE IF NOT EXISTS 'user_credentials' (credential_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,  credential_group VARCHAR(50) NOT NULL, user_name VARCHAR(50) NOT NULL, password TEXT NOT NULL, FOREIGN KEY(credential_id) REFERENCES groups(group_id))")
     cursor.close()
@@ -134,13 +134,38 @@ class ReceivedMessages(tk.Frame):
         self.tree.column('#1',  minwidth=0, width=100)
         self.tree.column('#2',  minwidth=0, width=400)
         self.tree.column('#3',  minwidth=0, width=100)
+        self.tree.bind('<<TreeviewSelect>>', self.on_select)
 
-
-        canvas = tk.Canvas(self, width=600, height=120)
-        canvas.place(x=250,y=350)
-        canvas.create_rectangle(10, 10, 1000, 5000, fill='')
+        cursor.execute("SELECT * FROM `received_messages` ")
+        
+        check = cursor.fetchone()
+        cursor.execute("SELECT * FROM `received_messages` ")
+        fetch = cursor.fetchall()
+        
+        if check is None:
+           print("nothing")
+           message_canvas = tk.Canvas(self, width=600, height=320)
+           message_canvas.place(x=300,y=50)
+           message_canvas.create_rectangle(10, 10, 1000, 5000, fill='')
+           mycanvas_label = message_canvas.create_text((250, 180), text="(Received Messages will display here)")
+           
+        else:
+            print("some messages availablejd")
+            #print(fetch)
+            for data in fetch:
+               #print("sda") 
+               #print(data)
+               #print("sda2") 
+               #print(data[2][0:100])
+               self.tree.insert('', 'end', values=(data[1], data[2][0:52] + '........', data[3]), )
+               
    
-        mylabel = canvas.create_text((250, 80), text="(Selected contact received message displays here)")
+
+        self.canvas = tk.Canvas(self, width=600, height=120)
+        self.canvas.place(x=300,y=350)
+        self.canvas.create_rectangle(10, 10, 1000, 5000, fill='')
+   
+        self.mylabel = self.canvas.create_text((250, 80), text="(Selected contact received message displays here)")
 
         refresh_button = tk.Button(self,width=18,height=2, text="Refresh",
                             command=lambda: controller.show_frame(PageOne))
@@ -180,6 +205,25 @@ class ReceivedMessages(tk.Frame):
         mainsetting_button = tk.Button(self,width=7,height=1, text="Security", command=lambda: controller.show_frame(Account)
                             )
         mainsetting_button.place(x=100, y=500)
+        
+        
+    def on_select(self, event):
+              self.canvas.delete(tk.ALL)
+              self.canvas.create_rectangle(10, 10, 1000, 5000, fill='')
+              curItem = self.tree.focus()
+              
+              #print(self.tree.item(curItem)['values'][1])
+              keyword = self.tree.item(curItem)['values'][1][0:10]
+              cursor.execute("SELECT message FROM `received_messages` WHERE message LIKE ?", (keyword+'%',))
+        
+              selected_message = cursor.fetchone()
+              
+              mylabel = self.canvas.create_text((250, 80), text=selected_message[0])
+              
+
+
+              
+              
 class SentMessages(tk.Frame):
 
     def __init__(self, parent, controller):
@@ -196,8 +240,58 @@ class SentMessages(tk.Frame):
         self.tree.column('#1',  minwidth=0, width=100)
         self.tree.column('#2',  minwidth=0, width=400)
         self.tree.column('#3',  minwidth=0, width=100)
+        cursor.execute("SELECT * FROM `received_messages` ")
+        
+        
+        fetch = cursor.fetchall()
+        
+        for messages in fetch:
+          
+          
+           test_string = messages[2]
+ 
+           # initializing split word which is ksh 
+           spl_word = 'ksh'
+  
+           # printing original string  
+           #print("The original string : " + str(test_string)) 
+  
+           # printing split string  
+           #print("The split string : " + str(spl_word)) 
+  
+           # using partition() 
+           # Get String after substring occurrence 
+           res = test_string.partition(spl_word)[2]
+           print(res)
 
-        cursor.execute("SELECT * FROM `sent_messages` ")
+           if res.split()[5].isnumeric():
+                print("my friend this is a phone number")
+                amount = res.split()[0]
+                sender_name = res.split()[2] + ' ' + res.split()[3] + ' ' + res.split()[4]
+                sender_number = res.split()[5]
+                date = res.split()[7]
+                time = res.split()[9]
+
+           else:
+                print("contains only two names")
+                amount = res.split()[0]
+                sender_name = res.split()[2] + ' ' + res.split()[3]
+                sender_number = res.split()[4]
+                date = res.split()[6]
+                time = res.split()[8] 
+           print (amount)
+           print (sender_name)
+           print (sender_number)
+           print (date)
+           print (time)
+           sender = "M-pesa"
+           
+
+           cursor.execute("SELECT profile_group, profile_message FROM `profiles` WHERE received_from = ? AND amount = ?", (sender, amount))
+           fetch = cursor.fetchall()
+           print("jkv")
+           print(fetch)
+        
         check = cursor.fetchone()
         fetch = cursor.fetchall()
         if check is None:
@@ -205,8 +299,7 @@ class SentMessages(tk.Frame):
         else:
             print("some messages available")
         for data in fetch:
-          print("sda") 
-          print(data)
+         
           self.tree.insert('', 'end', values=(data[2], data[3]))
 
         canvas = tk.Canvas(self, width=600, height=120)
@@ -495,7 +588,7 @@ class Settings(tk.Frame):
              rows= rows+1
           print("profiles available")
 
-          self.listbox.bind('<<ListboxSelect>>',self.CurSelet)
+          self.listbox.bind('<<ListboxSelect>>',self.On_Select)
 
         remove_button = tk.Button(self,width=13,height=1, bg="#737271", text="Remove"
                             )
@@ -548,7 +641,7 @@ class Settings(tk.Frame):
                             )
         mainsetting_button.place(x=100, y=500)
 
-    def CurSelet(self, event):
+    def On_Select(self, event):
         self.profile_entry.delete(0,tk.END)
         self.receivedfrom_entry.delete(0,tk.END)
         self.amount_entry.delete(0,tk.END)
@@ -567,7 +660,7 @@ class Settings(tk.Frame):
     
         cursor.execute("SELECT profile_name, received_from, amount, profile_group, profile_message FROM `profiles` WHERE profile_name = ?", (highlighted[0],))
         fetch = cursor.fetchone()
-        print(fetch[0])
+        print(highlighted)
         self.profile_entry.insert(10, fetch[0])
         self.receivedfrom_entry.insert(10, fetch[1])
         self.amount_entry.insert(10, fetch[2])
@@ -576,7 +669,18 @@ class Settings(tk.Frame):
           
 
     def add_profile(self):
-        pass
+         
+         warning_label = tk.Label()
+         warning_label.place(x=730,y=70)
+         if self.PROFILE_NAME.get() == "" or self.RECEIVE_FROM.get() == "" or self.AMOUNT.get() == "" or self.GROUP.get() == "" or self.message_entry.get(1.0, tk.END) == "":
+             warning_label.config(text = "Please fill all fields", fg = "red")
+             print(self.MESSAGE.get())
+             print(self.AMOUNT.get())
+
+         else:
+             cursor.execute("INSERT INTO `profiles` (profile_name, received_from, amount, profile_group, profile_message) VALUES(?, ?, ?, ?, ?)", (self.PROFILE_NAME.get(), self.RECEIVE_FROM.get(), self.AMOUNT.get(), self.GROUP.get(), self.message_entry.get(1.0, tk.END)))
+             conn.commit()
+             self.listbox.insert(tk.END, self.PROFILE_NAME.get())
             
 class Account(tk.Frame):
 
